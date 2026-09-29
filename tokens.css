@@ -1,0 +1,154 @@
+/* ============================================================
+   Castle Architect — Siege Lab
+   NEOBRUTALIST MEDIEVAL · design tokens (v1)
+   ------------------------------------------------------------
+   This file is the single source of truth for colour + type.
+   `src/config/palette.js` MUST mirror these hex values exactly.
+   Every value here is also documented in design.md §3.
+
+   RULES
+     · No gradients. No blur. No border-radius. No opacity-as-style.
+     · Every colour is a named token — never a raw hex in a component.
+     · Surface and text are swapped TOGETHER (design.md §6).
+   ============================================================ */
+
+:root {
+  /* ---------- SURFACE · parchment + ink (on-component) ---------- */
+  --paper:        #EFE3C8;  /* oklch(0.918 0.038 87)  primary panel fill */
+  --paper2:       #E2D3AF;  /* oklch(0.870 0.051 88)  raised slab / default button */
+  --paper-edge:   #CFBE97;  /* oklch(0.806 0.056 87)  disabled slab / track */
+  --ink:          #17130E;  /* oklch(0.190 0.012 73)  borders, hard shadows, body text */
+  --ink-soft:     #2E2820;  /* oklch(0.281 0.017 75)  secondary text on parchment */
+  --muted:        #6B5F4A;  /* tertiary / locked / caption on parchment */
+  --rule:         #4A423A;  /* oklch(0.385 0.017 67)  hairline on DARK, disabled border */
+
+  /* ---------- BACKDROP · warm ink (page + battlefield) ---------- */
+  --bg:           #191410;  /* oklch(0.196 0.011 61)  was #12101c purple */
+  --bg-deep:      #100D08;  /* oklch(0.161 0.011 81)  was #0b0a12 purple-black · scrims */
+  --ground-a:     #2A2318;  /* oklch(0.261 0.022 79)  board tile A · was #221f36 */
+  --ground-b:     #312A1C;  /* oklch(0.288 0.026 84)  board tile B · was #262341 */
+  --grid-line:    #463B29;  /* oklch(0.359 0.033 80)  grid stroke · was #322c4e */
+  --sky:          #241A12;  /* oklch(0.228 0.022 60)  skyline wash · was #1a1730 */
+  --ridge-far:    #402E1C;  /* skyline far peaks */
+  --ridge-near:   #2A1E11;  /* skyline near hills */
+  --city-line:    #3A2A19;  /* skyline block silhouettes */
+  --ground-base:  #221909;  /* ground strip under the board */
+  --ground-edge:  #2B2010;  /* ground strip scallop */
+
+  /* ---------- ACCENT · heraldic ---------- */
+  --crimson:      #C0362C;  /* oklch(0.540 0.176 29)  primary accent, header bars, destructive */
+  --crimson-deep: #94231C;  /* oklch(0.441 0.150 28)  crimson TEXT on parchment · 6.55:1 */
+  --lapis:        #2F4E9E;  /* oklch(0.446 0.135 265) Chaos / Wheel ONLY — never text on dark */
+  --gold-ink:     #9A7218;  /* oklch(0.577 0.111 82)  gold TEXT on parchment · >=16px bold only */
+  --gold:         #E8B73A;  /* oklch(0.803 0.146 86)  coin fill, gold ON DARK · 9.92:1 */
+  --green:        #66C07A;  /* HP / success (unchanged) */
+  --red:          #D9483B;  /* danger metric (unchanged) */
+
+  /* ---------- LEGACY ALIASES (existing C.* call sites) ---------- */
+  --panel:        var(--paper);
+  --panel-hi:     var(--paper2);
+  --line:         var(--ink);
+
+  /* ---------- TYPE ---------- */
+  --font-display: "Cinzel", "Times New Roman", serif;
+  --font-ui:      "Archivo", system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  /* fixed display steps — never fluid */
+  --step-56: 56px;
+  --step-42: 42px;
+  --step-34: 34px;
+  --step-28: 28px;
+  --step-22: 22px;
+
+  --track-label: 0.08em;   /* uppercase UI labels */
+  --track-display: 0.04em; /* Cinzel titles */
+
+  /* ---------- CHROME · the neobrutalist fingerprint ---------- */
+  --border-sm:   2px;
+  --border:      3px;
+  --border-lg:   4px;
+  --shadow-sm:   4px;   /* hard offset, no blur */
+  --shadow:      6px;
+  --shadow-lg:   8px;
+  --shadow-hover: 9px;
+  --radius:      0;     /* LOCKED — no rounded corners anywhere */
+
+  /* ---------- MOTION · no overshoot, ever ---------- */
+  --dur-press:   70ms;
+  --dur-focus:   0ms;    /* focus ring is instant */
+  --dur-hover:  100ms;
+  --dur-card:   120ms;
+  --dur-scrim:  140ms;
+  --dur-toast:  160ms;
+  --dur-banner: 180ms;
+  --ease-out:   cubic-bezier(0.33, 1, 0.68, 1);   /* ~Cubic.Out */
+  --ease-in:    cubic-bezier(0.55, 0.06, 0.68, 0.19);
+  --ease-quad:  cubic-bezier(0.11, 0, 0.5, 0);    /* ~Quad.Out */
+}
+
+/* ============================================================
+   PAGE CHROME (index.html — this file's live consumers)
+   Flat fills only. The old radial-gradient is removed: gradients
+   are banned by design.md §5.
+   ============================================================ */
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg-deep);
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+  font-family: var(--font-ui);
+}
+
+#app {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+}
+
+#game-container canvas {
+  display: block;
+  image-rendering: auto;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Boot splash — uppercase, tracked, Archivo 700. No italic. */
+#boot {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background: var(--bg-deep);
+  color: var(--paper);
+  font-family: var(--font-ui);
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  pointer-events: none;
+  transition: opacity 350ms var(--ease-out);
+}
+
+#boot::before {
+  content: "";
+  width: 14px;
+  height: 14px;
+  background: var(--gold);
+  border: 2px solid var(--ink);
+}
+
+#boot.hide { opacity: 0; }

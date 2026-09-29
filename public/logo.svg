@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <style>
+      .ink-shadow { fill: #14121f; }
+      .stone-base { fill: #2b263b; }
+      .stone-mid  { fill: #48435c; }
+      .stone-hi   { fill: #726c8d; }
+      .gold-main  { fill: #e8b73a; }
+      .gold-deep  { fill: #9b7c2a; }
+      .crimson    { fill: #d9483b; }
+      .crimson-dk { fill: #8a241b; }
+      .parchment  { fill: #f3efe6; }
+      .stroke-ink { stroke: #14121f; stroke-width: 14; stroke-linejoin: miter; stroke-linecap: square; }
+      .stroke-thin { stroke: #14121f; stroke-width: 8; }
+    </style>
+  </defs>
+
+  <!-- Hard Drop Shadow of Badge -->
+  <rect x="44" y="44" width="440" height="440" rx="0" class="ink-shadow" />
+
+  <!-- Main Parchment Badge Plate -->
+  <rect x="28" y="28" width="440" height="440" rx="0" class="parchment" stroke="#14121f" stroke-width="16" />
+
+  <!-- Inner Crimson Heraldic Border -->
+  <rect x="52" y="52" width="392" height="392" fill="none" stroke="#d9483b" stroke-width="8" />
+
+  <!-- Crossed Broadswords (Behind Keep) -->
+  <!-- Sword 1 -->
+  <g transform="rotate(45 248 248)">
+    <rect x="238" y="70" width="20" height="310" class="stone-hi" stroke="#14121f" stroke-width="6" />
+    <polygon points="238,70 258,70 248,30" class="stone-hi" stroke="#14121f" stroke-width="6" />
+    <rect x="210" y="340" width="76" height="18" class="gold-main" stroke="#14121f" stroke-width="6" />
+    <circle cx="248" cy="390" r="16" class="gold-main" stroke="#14121f" stroke-width="6" />
+  </g>
+  <!-- Sword 2 -->
+  <g transform="rotate(-45 248 248)">
+    <rect x="238" y="70" width="20" height="310" class="stone-hi" stroke="#14121f" stroke-width="6" />
+    <polygon points="238,70 258,70 248,30" class="stone-hi" stroke="#14121f" stroke-width="6" />
+    <rect x="210" y="340" width="76" height="18" class="gold-main" stroke="#14121f" stroke-width="6" />
+    <circle cx="248" cy="390" r="16" class="gold-main" stroke="#14121f" stroke-width="6" />
+  </g>
+
+  <!-- Fortress Base Plinth Shadow -->
+  <rect x="114" y="374" width="284" height="40" class="ink-shadow" />
+  <!-- Fortress Base Plinth -->
+  <rect x="104" y="364" width="284" height="40" class="stone-base" stroke="#14121f" stroke-width="12" />
+
+  <!-- Central Keep Tower Body -->
+  <rect x="134" y="174" width="224" height="190" class="stone-mid" stroke="#14121f" stroke-width="12" />
+  <!-- Tower Highlights -->
+  <rect x="154" y="190" width="184" height="154" class="stone-hi" />
+
+  <!-- Masonry Brick Lines -->
+  <line x1="134" y1="230" x2="358" y2="230" stroke="#14121f" stroke-width="6" />
+  <line x1="134" y1="280" x2="358" y2="280" stroke="#14121f" stroke-width="6" />
+  <line x1="134" y1="330" x2="358" y2="330" stroke="#14121f" stroke-width="6" />
+  <line x1="210" y1="190" x2="210" y2="230" stroke="#14121f" stroke-width="6" />
+  <line x1="280" y1="190" x2="280" y2="230" stroke="#14121f" stroke-width="6" />
+  <line x1="170" y1="230" x2="170" y2="280" stroke="#14121f" stroke-width="6" />
+  <line x1="248" y1="230" x2="248" y2="280" stroke="#14121f" stroke-width="6" />
+  <line x1="320" y1="230" x2="320" y2="280" stroke="#14121f" stroke-width="6" />
+
+  <!-- Castle Crenellations (Battlements) -->
+  <rect x="124" y="130" width="46" height="50" class="stone-hi" stroke="#14121f" stroke-width="10" />
+  <rect x="194" y="130" width="46" height="50" class="stone-hi" stroke="#14121f" stroke-width="10" />
+  <rect x="264" y="130" width="46" height="50" class="stone-hi" stroke="#14121f" stroke-width="10" />
+  <rect x="334" y="130" width="46" height="50" class="stone-hi" stroke="#14121f" stroke-width="10" />
+
+  <!-- Heavy Portcullis Iron Gate Arch -->
+  <path d="M 204,364 L 204,280 Q 248,250 292,280 L 292,364 Z" class="ink-shadow" stroke="#14121f" stroke-width="10" />
+  <!-- Gate Iron Grate -->
+  <line x1="226" y1="275" x2="226" y2="364" stroke="#e8b73a" stroke-width="6" />
+  <line x1="248" y1="262" x2="248" y2="364" stroke="#e8b73a" stroke-width="6" />
+  <line x1="270" y1="275" x2="270" y2="364" stroke="#e8b73a" stroke-width="6" />
+  <line x1="204" y1="310" x2="292" y2="310" stroke="#e8b73a" stroke-width="6" />
+  <line x1="204" y1="340" x2="292" y2="340" stroke="#e8b73a" stroke-width="6" />
+
+  <!-- Golden Heraldic Crown atop the Keep -->
+  <polygon points="184,124 196,74 224,102 248,60 272,102 300,74 312,124" class="gold-main" stroke="#14121f" stroke-width="10" />
+  <rect x="180" y="118" width="136" height="16" class="gold-deep" stroke="#14121f" stroke-width="8" />
+  <!-- Crown Jewels -->
+  <circle cx="248" cy="88" r="7" class="crimson" stroke="#14121f" stroke-width="3" />
+  <circle cx="210" cy="100" r="5" class="stone-base" stroke="#14121f" stroke-width="3" />
+  <circle cx="286" cy="100" r="5" class="stone-base" stroke="#14121f" stroke-width="3" />
+
+  <!-- Corner Rivets / Studs -->
+  <circle cx="48" cy="48" r="8" class="stone-base" />
+  <circle cx="448" cy="48" r="8" class="stone-base" />
+  <circle cx="48" cy="448" r="8" class="stone-base" />
+  <circle cx="448" cy="448" r="8" class="stone-base" />
+</svg>

@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>Castle Architect: Siege Lab — Tactical Roguelite Castle Defense</title>
+
+  <!-- Primary Meta Tags -->
+  <meta name="title" content="Castle Architect: Siege Lab — Tactical Roguelite Castle Defense" />
+  <meta name="description" content="Design, build, and defend your custom fortress in Castle Architect: Siege Lab. A tactical roguelite tower defense game with synergies, chaotic anomalies, and endless siege survival." />
+  <meta name="keywords" content="castle architect, siege lab, tower defense, roguelite, strategy game, phaser game, html5 game, browser game, indie game, medieval game, game jam" />
+  <meta name="author" content="Castle Architect Team" />
+  <meta name="robots" content="index, follow" />
+  <meta name="theme-color" content="#100D08" />
+
+  <!-- Mobile PWA & App Capabilities -->
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Siege Lab" />
+
+  <!-- Favicons & App Icons -->
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="alternate icon" href="/favicon.svg" />
+  <link rel="apple-touch-icon" href="/logo.svg" />
+  <link rel="manifest" href="/site.webmanifest" />
+
+  <!-- Open Graph / Facebook / Discord -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://castle-architect-siege-lab.local/" />
+  <meta property="og:title" content="Castle Architect: Siege Lab" />
+  <meta property="og:description" content="Raise stone, place defenses, spin the Wheel of Chaos, and hold the line against unrelenting medieval hordes." />
+  <meta property="og:image" content="/logo.svg" />
+
+  <!-- Twitter / X Card -->
+  <meta property="twitter:card" content="summary_large_image" />
+  <meta property="twitter:url" content="https://castle-architect-siege-lab.local/" />
+  <meta property="twitter:title" content="Castle Architect: Siege Lab" />
+  <meta property="twitter:description" content="Raise stone, place defenses, spin the Wheel of Chaos, and hold the line against unrelenting medieval hordes." />
+  <meta property="twitter:image" content="/logo.svg" />
+
+  <!-- Structured Data JSON-LD (SEO Schema) -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "VideoGame",
+    "name": "Castle Architect: Siege Lab",
+    "description": "Tactical roguelite castle defense game where players build modular fortifications, craft defensive synergies, and withstand escalating enemy sieges.",
+    "genre": ["Strategy", "Tower Defense", "Roguelite"],
+    "gamePlatform": ["Web Browser", "Desktop", "Mobile"],
+    "applicationCategory": "Game",
+    "inLanguage": "en",
+    "operatingSystem": "Any",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD"
+    }
+  }
+  </script>
+
+  <!-- Design tokens: flat fills only, no gradients, radius 0. -->
+  <link rel="stylesheet" href="/tokens.css" />
+
+  <!-- Display = Cinzel 700 (roman only). UI/body = Archivo. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700&family=Cinzel:wght@700&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <main id="app" role="main" aria-label="Castle Architect Game Window">
+    <div id="game-container" aria-label="Game Canvas Area"></div>
+  </main>
+  <div id="boot" aria-live="polite">Raising the castle…</div>
+
+  <script type="module" src="/src/main.js"></script>
+  <script>
+    // Keep the page still on mobile: no pinch zoom, no scroll, no long-press menu.
+    document.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
+    document.addEventListener('contextmenu', (e) => e.preventDefault());
+    document.addEventListener('gesturestart', (e) => e.preventDefault());
+  </script>
+</body>
+</html>

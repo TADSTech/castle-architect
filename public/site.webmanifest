@@ -1,0 +1,24 @@
+{
+  "name": "Castle Architect: Siege Lab",
+  "short_name": "Siege Lab",
+  "description": "A tactical roguelite fortress defense and siege architect game built in high-definition neobrutalist heraldry.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#100D08",
+  "theme_color": "#100D08",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/logo.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/favicon.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

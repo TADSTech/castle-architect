@@ -1,0 +1,13 @@
+[
+  {
+    "date": "2026-09-29",
+    "macrostructure": "Game GUI (canvas HUD · menus · modals)",
+    "theme": "custom",
+    "theme_axes": "light / roman-serif / warm",
+    "vibe": "neobrutalist medieval parchment, ink-stamped, flat and honest",
+    "enrichment": "none",
+    "brief": "Castle Architect — Siege Lab · Phaser 4 GUI restyle to neobrutalist-medieval (design.md, nb-medieval@1.0.0); scope = menus/HUD/panels/buttons/bars/overlays/Wheel of Chaos + warm-ink backdrop; gameplay sprite colours locked",
+    "scope": "app",
+    "verify": "bun run build + .hallmark/verify-shots.mjs → 0 errors, 28 shots @ 1280x720 and 720x1280; pixel-probe of portrait top bar + landscape HUD confirmed parchment/ink/green tokens; inline hex = 0 across GUI files (palette.js token defs only)"
+  }
+]

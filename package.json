@@ -1,0 +1,20 @@
+{
+  "name": "castle-architect-siege-lab",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview --port 4173",
+    "bun:dev": "bun run vite",
+    "bun:build": "bun run vite build"
+  },
+  "dependencies": {
+    "phaser": "^4.2.1"
+  },
+  "devDependencies": {
+    "playwright": "^1.63.0",
+    "vite": "^6.3.5"
+  }
+}
