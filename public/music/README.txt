@@ -1,25 +1,34 @@
-CUSTOM MUSIC - drop your tracks in this folder
-=============================================
+=============================================================================
+CASTLE ARCHITECT: SIEGE LAB - CUSTOM SOUNDTRACK INSTRUCTIONS
+=============================================================================
 
-The game looks for these exact file names:
+You can drop your own audio files into this folder (public/music/) using these exact names:
 
-  game-music.mp3           Keep at 50% HP or more
-  game-music-low.mp3       Keep below 50% HP
-  game-music-critical.mp3  Keep below 20% HP
+  1. game-music-ambient.mp3 (or game-music.mp3)
+     -> Plays during the calm Build Phase & Title Menus.
 
-Format: .mp3 is the default, but .ogg / .m4a / .wav work too - just keep
-the same name and change the ending (game-music.ogg, ...). The game tries
-.mp3 first, then .ogg, .m4a, .wav.
+  2. game-music-battle.mp3
+     -> Plays during active Siege Battles when Keep Health is >= 50%.
 
-The three tracks crossfade into each other as your Keep takes damage, and
-all of them loop.
+  3. game-music-low.mp3
+     -> Plays during active Siege Battles when Keep Health drops below 50%.
 
-If a file is missing the game falls back along the chain
-(calm -> low -> critical), so two files still cover the whole run.
-If this folder is empty the built-in synth drone plays instead - the game
-is never silent.
+  4. game-music-critical.mp3
+     -> Plays during active Siege Battles when Keep Health drops below 20% (Panic / Danger).
 
-Development:   drop the files in, refresh the browser (bun run dev).
-Release:       the files must be in here BEFORE you run `bun run build`,
-               because they are copied into dist/ (and the zip) at build
-               time.
+-----------------------------------------------------------------------------
+Supported Formats:
+  .mp3, .ogg, .m4a, .wav (First matching format found is used).
+
+Fallback Behavior:
+  If any specific file is missing, the game falls back along the chain:
+  (Ambient -> Battle -> Low -> Critical).
+  If no files are added, the game's built-in 4-tier WebAudio procedural synth
+  automatically synthesizes dynamic ambient lutes, marching war drums, and
+  critical heartbeat rumbles on the fly in real-time!
+
+-----------------------------------------------------------------------------
+Rebuild after adding music files:
+  bun run build
+  Compress-Archive -Path dist/* -DestinationPath castle-architect-siege-lab.zip -Force
+=============================================================================

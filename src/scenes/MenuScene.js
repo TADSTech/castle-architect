@@ -14,7 +14,7 @@ export default class MenuScene extends Phaser.Scene {
     this.mode = 'root';
     this.L = getLayout(this);
     const { W, H, isLandscape } = this.L;
-    setMusicState('calm');
+    setMusicState('ambience');
 
     if (isLandscape) {
       this.add.image(W / 2, 200, 'skyline').setDisplaySize(W, 400).setAlpha(0.75);

@@ -201,128 +201,227 @@ export function toggleSound() {
   return s.sound;
 }
 
-// ------------------------------------------------------------- custom music
+// ------------------------------------------------------------- custom music & dynamic synth
 // Drop your own tracks into public/music/ using these exact names:
-//   game-music.mp3          - Keep at 50% HP or more
-//   game-music-low.mp3      - Keep below 50% HP
-//   game-music-critical.mp3 - Keep below 20% HP
+//   1. game-music-ambient.mp3 (or game-music.mp3) - Calm build phase & menus
+//   2. game-music-battle.mp3                      - Active siege (Keep >= 50% HP)
+//   3. game-music-low.mp3                         - Active siege (Keep < 50% HP)
+//   4. game-music-critical.mp3                    - Active siege (Keep < 20% HP)
 // Any of .mp3 / .ogg / .m4a / .wav is accepted (first one found wins).
-// Tracks crossfade as the Keep takes damage. If a file is missing the
-// next track in the chain is used; if the folder is empty the synthesised
-// drone below keeps playing so the game is never silent.
+//
+// 100% SAMPLE-ACCURATE GAPLESS WEB-AUDIO LOOP ENGINE:
+// Decodes audio PCM directly in memory, calculates an equal-power (sin/cos)
+// 1.0-second seamless loop splice, and runs native C++ DSP looping on the Web Audio thread.
 const MUSIC_FILES = {
-  calm: 'music/game-music',
+  ambience: 'music/game-music-ambient',
+  calm: 'music/game-music-ambient',
+  battle: 'music/game-music-battle',
   low: 'music/game-music-low',
   critical: 'music/game-music-critical',
 };
 const MUSIC_EXTS = ['.mp3', '.ogg', '.m4a', '.wav'];
 const MUSIC_CHAIN = {
-  calm: ['calm', 'low', 'critical'],
-  low: ['low', 'critical', 'calm'],
-  critical: ['critical', 'low', 'calm'],
+  ambience: ['ambience', 'calm', 'battle', 'low', 'critical'],
+  calm: ['ambience', 'calm', 'battle', 'low', 'critical'],
+  battle: ['battle', 'ambience', 'calm', 'low', 'critical'],
+  low: ['low', 'battle', 'critical', 'ambience', 'calm'],
+  critical: ['critical', 'low', 'battle', 'ambience', 'calm'],
 };
-const MUSIC_VOL = 0.45;
-const FADE_MS = 1600;
+const MUSIC_VOLUMES = {
+  ambience: 0.045, // -20 dB relative to standard 0.45 (10^(-20/20) = 0.1x)
+  calm: 0.045,
+  battle: 0.20,   // -7 dB relative to standard 0.45 (10^(-7/20) = 0.447x)
+  low: 0.215,     // -7 dB relative to standard 0.48
+  critical: 0.23, // -7 dB relative to standard 0.52
+};
+const MUSIC_VOL = 0.20;
+const FADE_SEC = 1.2;
+const LOOP_CROSSFADE_SEC = 1.0;
 
-const tracks = {};   // key -> HTMLAudioElement
-const dead = new Set(); // key -> file known to be absent
-const attempt = {};  // key -> extension index being tried
-let current = null;  // element fading in / playing
-let outgoing = null; // element fading out
-let fadeTimer = null;
-let musicState = 'calm';
+const bufferCache = new Map(); // key -> AudioBuffer
+const loadingPromises = new Map(); // key -> Promise<AudioBuffer|null>
+const dead = new Set(); // key -> not found
+
+let activeVoiceNode = null; // { source, gain, key }
+let outgoingVoiceNodes = []; // array of { source, gain } fading out
+let musicState = 'ambience';
 let wanted = false;
-let gestureArmed = false;
 
-function trackUrl(key) {
-  const base = (import.meta.env && import.meta.env.BASE_URL) || './';
-  return base + MUSIC_FILES[key] + MUSIC_EXTS[attempt[key] || 0];
+function createSeamlessLoopBuffer(audioCtx, originalBuffer, crossfadeSec = LOOP_CROSSFADE_SEC) {
+  const sampleRate = originalBuffer.sampleRate;
+  const numChannels = originalBuffer.numberOfChannels;
+  const origLen = originalBuffer.length;
+  
+  const maxFade = Math.floor(origLen / 4);
+  const fadeLen = Math.min(Math.floor(sampleRate * crossfadeSec), maxFade);
+  
+  if (fadeLen <= 0 || origLen <= fadeLen * 2) {
+    return originalBuffer;
+  }
+  
+  const newLen = origLen - fadeLen;
+  const loopBuffer = audioCtx.createBuffer(numChannels, newLen, sampleRate);
+  
+  for (let ch = 0; ch < numChannels; ch++) {
+    const srcData = originalBuffer.getChannelData(ch);
+    const dstData = loopBuffer.getChannelData(ch);
+    const endOffset = origLen - fadeLen;
+    
+    // Equal-power crossfade of the seam
+    for (let i = 0; i < fadeLen; i++) {
+      const t = i / fadeLen;
+      const inWeight = Math.sin(t * 0.5 * Math.PI);
+      const outWeight = Math.cos(t * 0.5 * Math.PI);
+      
+      dstData[i] = srcData[i] * inWeight + srcData[endOffset + i] * outWeight;
+    }
+    
+    // Middle bulk data
+    for (let i = fadeLen; i < newLen; i++) {
+      dstData[i] = srcData[i];
+    }
+  }
+  
+  return loopBuffer;
 }
 
-function ensureTrack(key) {
-  if (tracks[key]) return tracks[key];
-  const a = new Audio();
-  a.loop = true;
-  a.preload = 'auto';
-  a.volume = 0;
-  a.addEventListener('error', () => {
-    if (tracks[key] !== a) return; // stale element
-    const i = (attempt[key] || 0) + 1;
-    attempt[key] = i;
-    if (i < MUSIC_EXTS.length) { a.src = trackUrl(key); return; } // try next format
-    delete tracks[key];
-    if (dead.has(key)) return;
+async function loadTrackBuffer(key) {
+  if (bufferCache.has(key)) return bufferCache.get(key);
+  if (loadingPromises.has(key)) return loadingPromises.get(key);
+  if (dead.has(key)) return null;
+
+  const c = ensure();
+  if (!c) return null;
+
+  const promise = (async () => {
+    const base = (import.meta.env && import.meta.env.BASE_URL) || './';
+    const prefix = MUSIC_FILES[key] || 'music/game-music';
+
+    for (const ext of MUSIC_EXTS) {
+      const url = base + prefix + ext;
+      try {
+        const res = await fetch(url);
+        if (!res.ok) continue;
+        const arrayBuf = await res.arrayBuffer();
+        const decoded = await c.decodeAudioData(arrayBuf);
+        const seamless = createSeamlessLoopBuffer(c, decoded, LOOP_CROSSFADE_SEC);
+        bufferCache.set(key, seamless);
+        return seamless;
+      } catch {
+        // try next extension
+      }
+    }
+
     dead.add(key);
-    if (current === a) { current = null; playMusic(); }
-  });
-  tracks[key] = a;
-  a.src = trackUrl(key);
-  return a;
+    return null;
+  })();
+
+  loadingPromises.set(key, promise);
+  return promise;
 }
 
 function pickKey(state) {
-  for (const k of MUSIC_CHAIN[state]) if (!dead.has(k)) return k;
+  const list = MUSIC_CHAIN[state] || MUSIC_CHAIN.ambience;
+  for (const k of list) if (!dead.has(k)) return k;
   return null;
 }
 
-function resume(el) {
-  if (!el) return;
-  const p = el.play();
-  if (p && p.catch) p.catch(() => armGestureRetry());
-}
-
-function armGestureRetry() {
-  if (gestureArmed) return;
-  gestureArmed = true;
-  const go = () => {
-    gestureArmed = false;
-    window.removeEventListener('pointerdown', go);
-    window.removeEventListener('keydown', go);
-    if (wanted && loadSave().music) resume(current);
-  };
-  window.addEventListener('pointerdown', go);
-  window.addEventListener('keydown', go);
-}
-
-function endFade() {
-  if (fadeTimer) { clearInterval(fadeTimer); fadeTimer = null; }
-  if (outgoing) {
-    outgoing.pause();
-    try { outgoing.currentTime = 0; } catch { /* ignore */ }
-    outgoing.volume = 0;
-    outgoing = null;
+async function playMusic() {
+  const c = ensure();
+  if (!c || !wanted || !loadSave().music) return;
+  if (c.state === 'suspended') {
+    try { await c.resume(); } catch {}
   }
-}
 
-function fade(to, from) {
-  endFade();
-  resume(to);
-  if (from === to) { to.volume = MUSIC_VOL; return; }
-  outgoing = from || null;
-  const t0 = performance.now();
-  fadeTimer = setInterval(() => {
-    const k = Math.min(1, (performance.now() - t0) / FADE_MS);
-    const e = k * k * (3 - 2 * k); // smoothstep
-    to.volume = e * MUSIC_VOL;
-    if (outgoing) outgoing.volume = (1 - e) * MUSIC_VOL;
-    if (k >= 1) endFade();
-  }, 50);
-}
-
-function playMusic() {
   const key = pickKey(musicState);
-  if (!key) { // no custom files at all -> synth drone
-    endFade();
-    if (current) { current.pause(); current = null; }
-    startDrone();
+  if (!key) {
+    stopTrackVoices(FADE_SEC);
+    startProceduralMusic(musicState);
     return;
   }
-  stopDrone();
-  const to = ensureTrack(key);
-  if (to === current) { resume(to); return; }
-  const from = current;
-  current = to;
-  fade(to, from);
+
+  // If already playing this track, don't restart it
+  if (activeVoiceNode && activeVoiceNode.key === key) {
+    return;
+  }
+
+  const buffer = await loadTrackBuffer(key);
+  if (!wanted || !loadSave().music) return;
+
+  if (!buffer) {
+    const fallbackKey = pickKey(musicState);
+    if (!fallbackKey) {
+      stopTrackVoices(FADE_SEC);
+      startProceduralMusic(musicState);
+    } else {
+      playMusic();
+    }
+    return;
+  }
+
+  // Check again in case state changed during async buffer decode
+  if (activeVoiceNode && activeVoiceNode.key === key) return;
+
+  stopProceduralMusic();
+  const t0 = c.currentTime;
+  const targetVol = MUSIC_VOLUMES[key] || MUSIC_VOL;
+
+  // Create new voice node
+  const source = c.createBufferSource();
+  source.buffer = buffer;
+  source.loop = true;
+
+  const gain = c.createGain();
+  gain.gain.setValueAtTime(0.0001, t0);
+  gain.gain.exponentialRampToValueAtTime(targetVol, t0 + FADE_SEC);
+
+  source.connect(gain);
+  gain.connect(master);
+  source.start(t0);
+
+  // Fade out previous active voice
+  if (activeVoiceNode) {
+    const prev = activeVoiceNode;
+    try {
+      prev.gain.gain.setValueAtTime(Math.max(0.0001, prev.gain.gain.value), t0);
+      prev.gain.gain.exponentialRampToValueAtTime(0.0001, t0 + FADE_SEC);
+      setTimeout(() => {
+        try {
+          prev.source.stop();
+          prev.source.disconnect();
+          prev.gain.disconnect();
+        } catch {}
+      }, FADE_SEC * 1000 + 100);
+    } catch {}
+  }
+
+  activeVoiceNode = { source, gain, key };
+}
+
+function stopTrackVoices(fadeSec = FADE_SEC) {
+  const c = ensure();
+  if (activeVoiceNode) {
+    const prev = activeVoiceNode;
+    activeVoiceNode = null;
+    if (c) {
+      const t0 = c.currentTime;
+      try {
+        prev.gain.gain.setValueAtTime(Math.max(0.0001, prev.gain.gain.value), t0);
+        prev.gain.gain.exponentialRampToValueAtTime(0.0001, t0 + fadeSec);
+        setTimeout(() => {
+          try {
+            prev.source.stop();
+            prev.source.disconnect();
+            prev.gain.disconnect();
+          } catch {}
+        }, fadeSec * 1000 + 100);
+      } catch {
+        try { prev.source.stop(); } catch {}
+      }
+    } else {
+      try { prev.source.stop(); } catch {}
+    }
+  }
 }
 
 export function startMusic() {
@@ -333,52 +432,157 @@ export function startMusic() {
 
 export function stopMusic() {
   wanted = false;
-  endFade();
-  if (current) {
-    current.pause();
-    try { current.currentTime = 0; } catch { /* ignore */ }
-    current.volume = 0;
-    current = null;
-  }
-  stopDrone();
+  stopTrackVoices(FADE_SEC);
+  stopProceduralMusic();
 }
 
-// Called by the game whenever the Keep's health crosses a threshold.
-//   'calm' | 'low' | 'critical'
+// Called by GameScene & MenuScene:
+//   'ambience' | 'battle' | 'low' | 'critical'
 export function setMusicState(state) {
-  if (state === musicState) return;
-  musicState = state;
+  const normalized = (state === 'calm' || state === 'build') ? 'ambience' : state;
+  if (normalized === musicState) return;
+  musicState = normalized;
   if (wanted && loadSave().music) playMusic();
 }
 
-// Fallback: very light generative drone when no custom track is available.
-let droneTimer = null;
-let droneStep = 0;
-const SCALE = [110, 130.81, 146.83, 164.81, 196, 220];
+// ------------------------------------------------------------- 4-Tier Procedural Synth Music Engine
+let synthTimer = null;
+let synthBeat = 0;
 
-function startDrone() {
-  if (droneTimer) return;
-  droneTimer = setInterval(() => {
+// Musical scales
+const AMBIENT_NOTES = [110, 130.81, 146.83, 164.81, 196, 220, 261.63]; // A Minor Pentatonic
+const BATTLE_BASS = [55, 55, 65.41, 73.42, 82.41, 73.42, 65.41, 55];  // A2 Marching Bass
+const LOW_BASS = [55, 55, 48.99, 48.99, 43.65, 43.65, 41.20, 41.20];   // A -> G -> F -> E Minor Descending
+const CRITICAL_PULSE = [55, 58.27, 55, 58.27];                         // A -> Bb Discordant Warning
+
+function startProceduralMusic(state) {
+  stopProceduralMusic();
+  if (!unlocked || !loadSave().music) return;
+
+  const intervalMs = state === 'critical' ? 375 : state === 'low' ? 435 : state === 'battle' ? 500 : 900;
+
+  synthTimer = setInterval(() => {
     if (!unlocked || !loadSave().music) return;
     const c = ensure();
     if (!c) return;
-    const note = SCALE[(droneStep * 3 + (droneStep % 2)) % SCALE.length];
     const t0 = c.currentTime;
-    const osc = c.createOscillator();
-    const g = c.createGain();
-    osc.type = 'sine';
-    osc.frequency.value = note;
-    g.gain.setValueAtTime(0.0001, t0);
-    g.gain.exponentialRampToValueAtTime(0.07, t0 + 0.4);
-    g.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.7);
-    osc.connect(g); g.connect(master);
-    osc.start(t0); osc.stop(t0 + 1.8);
-    droneStep++;
-  }, 900);
+
+    if (musicState === 'ambience') {
+      // 1. Ambience: Gentle lute/harp plucks & warm sub drone (-20 dB scale)
+      const note = AMBIENT_NOTES[(synthBeat * 3 + (synthBeat % 3)) % AMBIENT_NOTES.length];
+      const osc = c.createOscillator();
+      const g = c.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(note, t0);
+      g.gain.setValueAtTime(0.00001, t0);
+      g.gain.exponentialRampToValueAtTime(0.008, t0 + 0.04);
+      g.gain.exponentialRampToValueAtTime(0.00001, t0 + 1.4);
+      osc.connect(g); g.connect(master);
+      osc.start(t0); osc.stop(t0 + 1.5);
+
+      // Deep Root Drone every 4 beats (-20 dB scale)
+      if (synthBeat % 4 === 0) {
+        const drone = c.createOscillator();
+        const dg = c.createGain();
+        drone.type = 'sine';
+        drone.frequency.setValueAtTime(55, t0);
+        dg.gain.setValueAtTime(0.00001, t0);
+        dg.gain.exponentialRampToValueAtTime(0.009, t0 + 0.6);
+        dg.gain.exponentialRampToValueAtTime(0.00001, t0 + 3.2);
+        drone.connect(dg); dg.connect(master);
+        drone.start(t0); drone.stop(t0 + 3.4);
+      }
+    } else if (musicState === 'battle') {
+      // 2. Battle: 120 BPM Marching War Drums + Brass Horn Bassline (-7 dB scale)
+      const bassNote = BATTLE_BASS[synthBeat % BATTLE_BASS.length];
+      const osc = c.createOscillator();
+      const g = c.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(bassNote * 2, t0);
+      const filt = c.createBiquadFilter();
+      filt.type = 'lowpass';
+      filt.frequency.setValueAtTime(320, t0);
+      filt.frequency.exponentialRampToValueAtTime(140, t0 + 0.3);
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(0.054, t0 + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.38);
+      osc.connect(filt); filt.connect(g); g.connect(master);
+      osc.start(t0); osc.stop(t0 + 0.4);
+
+      // War Drum Kick on beats 0 & 2
+      if (synthBeat % 2 === 0) {
+        const kick = c.createOscillator();
+        const kg = c.createGain();
+        kick.type = 'sine';
+        kick.frequency.setValueAtTime(140, t0);
+        kick.frequency.exponentialRampToValueAtTime(38, t0 + 0.12);
+        kg.gain.setValueAtTime(0.108, t0);
+        kg.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.22);
+        kick.connect(kg); kg.connect(master);
+        kick.start(t0); kick.stop(t0 + 0.24);
+      }
+    } else if (musicState === 'low') {
+      // 3. Low HP (<50%): 138 BPM Tense Minor Descending Progression (-7 dB scale)
+      const bassNote = LOW_BASS[synthBeat % LOW_BASS.length];
+      const osc = c.createOscillator();
+      const g = c.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(bassNote * 2, t0);
+      const filt = c.createBiquadFilter();
+      filt.type = 'lowpass';
+      filt.frequency.setValueAtTime(450, t0);
+      filt.frequency.exponentialRampToValueAtTime(160, t0 + 0.25);
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(0.067, t0 + 0.015);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.32);
+      osc.connect(filt); filt.connect(g); g.connect(master);
+      osc.start(t0); osc.stop(t0 + 0.35);
+
+      // Fast War Drum Roll
+      const kick = c.createOscillator();
+      const kg = c.createGain();
+      kick.type = 'sine';
+      kick.frequency.setValueAtTime(160, t0);
+      kick.frequency.exponentialRampToValueAtTime(42, t0 + 0.1);
+      kg.gain.setValueAtTime(0.116, t0);
+      kg.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.18);
+      kick.connect(kg); kg.connect(master);
+      kick.start(t0); kick.stop(t0 + 0.2);
+    } else if (musicState === 'critical') {
+      // 4. Critical HP (<20%): 160 BPM Heartbeat Sub + Panic Stabs (-7 dB scale)
+      const pulseNote = CRITICAL_PULSE[synthBeat % CRITICAL_PULSE.length];
+      const osc = c.createOscillator();
+      const g = c.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(pulseNote * 3, t0);
+      const filt = c.createBiquadFilter();
+      filt.type = 'bandpass';
+      filt.frequency.setValueAtTime(600, t0);
+      filt.Q.setValueAtTime(4.0, t0);
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(0.08, t0 + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.24);
+      osc.connect(filt); filt.connect(g); g.connect(master);
+      osc.start(t0); osc.stop(t0 + 0.26);
+
+      // Pounding Alarm Double-Heartbeat
+      const hb = c.createOscillator();
+      const hbg = c.createGain();
+      hb.type = 'sine';
+      hb.frequency.setValueAtTime(180, t0);
+      hb.frequency.exponentialRampToValueAtTime(32, t0 + 0.14);
+      hbg.gain.setValueAtTime(0.156, t0);
+      hbg.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.2);
+      hb.connect(hbg); hbg.connect(master);
+      hb.start(t0); hb.stop(t0 + 0.22);
+    }
+
+    synthBeat++;
+  }, intervalMs);
 }
 
-function stopDrone() {
-  if (droneTimer) { clearInterval(droneTimer); droneTimer = null; }
+function stopProceduralMusic() {
+  if (synthTimer) { clearInterval(synthTimer); synthTimer = null; }
 }
 
 // QA hook: report which track is live, its volume, and what failed to load.
@@ -386,12 +590,10 @@ window.__music = () => ({
   state: musicState,
   wanted,
   on: loadSave().music,
-  drone: !!droneTimer,
+  synthActive: !!synthTimer,
   dead: [...dead],
-  tracks: Object.fromEntries(Object.keys(MUSIC_FILES).map((k) => {
-    const a = tracks[k];
-    return [k, a
-      ? { vol: +a.volume.toFixed(3), paused: a.paused, t: +a.currentTime.toFixed(2), ready: a.readyState, err: !!a.error }
-      : 'unset'];
-  })),
+  activeTrack: activeVoiceNode ? activeVoiceNode.key : null,
+  cachedBuffers: [...bufferCache.keys()],
 });
+
+

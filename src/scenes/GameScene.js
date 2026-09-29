@@ -1464,13 +1464,15 @@ g.add(this.add.rectangle(W / 2, 940, W - 32, 336, C.paper, 1).setStrokeStyle(3, 
       this.keepBarFg.setFillStyle(r > 0.55 ? C.green : r > 0.25 ? C.gold : C.red, 1);
       this.keepBarText.setText(`${Math.ceil(k.hp)}`);
       this.keepBarText.setColor(hex(C.ink));
-      setMusicState(r < 0.2 ? 'critical' : r < 0.5 ? 'low' : 'calm');
+      if (this.phase === 'build') {
+        setMusicState('ambience');
+      } else {
+        setMusicState(r < 0.2 ? 'critical' : r < 0.5 ? 'low' : 'battle');
+      }
     } else {
       this.keepBarFg.setSize(1, 14);
       this.keepBarText.setText('');
-      // Keep destroyed (or not placed yet): hold the darkest track through
-      // the results screen, calm when there is simply no Keep on the board.
-      setMusicState(k && k.dead ? 'critical' : 'calm');
+      setMusicState(k && k.dead ? 'critical' : 'ambience');
     }
     this.statusText.setText(`PIECES ${this.countPieces()}/${this.pieceLimit()}`);
     if (this.expandSlotBtn) {
